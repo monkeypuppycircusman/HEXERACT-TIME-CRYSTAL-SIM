@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PFUH Hexeract — Hall of Infinite Mirrors</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;900&display=swap');
+
+  :root {
+    --void: #000005;
+    --gold: #FFD700;
+    --gold2: #FFA500;
+    --teal: #00FFD4;
+    --purple: #8B00FF;
+    --blue: #0044FF;
+    --white: #E8F4FF;
+    --dim: rgba(255,215,0,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--void);
+    color: var(--gold);
+    font-family: 'Share Tech Mono', monospace;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  #canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+
+  #ui {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  #title {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    pointer-events: none;
+  }
+
+  #title h1 {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: clamp(14px, 2.5vw, 28px);
+    color: var(--gold);
+    letter-spacing: 0.3em;
+    text-shadow: 0 0 30px var(--gold), 0 0 60px var(--gold2);
+    animation: pulse 3s ease-in-out infinite;
+  }
+
+  #title p {
+    font-size: clamp(9px, 1.2vw, 12px);
+    color: var(--teal);
+    letter-spacing: 0.2em;
+    margin-top: 4px;
+    opacity: 0.8;
+  }
+
+  @keyframes pulse {
+    0%, 100% { text-shadow: 0 0 20px var(--gold), 0 0 40px var(--gold2); }
+    50% { text-shadow: 0 0 40px var(--gold), 0 0 80px var(--gold2), 0 0 120px #FF6600; }
+  }
+
+  #ladder {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    pointer-events: all;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: all 0.3s;
+  }
+
+  .node:hover, .node.active {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+
+  .node-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+  }
+
+  .node-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+
+  .n0 { color: #6633CC; }
+  .n1 { color: #3366FF; }
+  .n3 { color: #00AAFF; }
+  .n5 { color: #00FFD4; }
+  .n7 { color: #88FF44; }
+  .n9 { color: #FFD700; }
+
+  #controls {
+    position: absolute;
+    top: 50%;
+    right: 24px;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: all;
+  }
+
+  .ctrl-btn {
+    background: rgba(0,0,0,0.7);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    transition: all 0.2s;
+    text-align: center;
+  }
+
+  .ctrl-btn:hover {
+    background: rgba(255,215,0,0.15);
+    box-shadow: 0 0 10px var(--gold);
+  }
+
+  #info {
+    position: absolute;
+    top: 90px;
+    left: 24px;
+    font-size: 10px;
+    color: var(--teal);
+    letter-spacing: 0.1em;
+    line-height: 1.8;
+    opacity: 0.7;
+  }
+
+  #phase-display {
+    position: absolute;
+    top: 90px;
+    right: 100px;
+    font-size: 10px;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+    line-height: 1.8;
+    text-align: right;
+    opacity: 0.8;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div id="ui">
+  <div id="title">
+    <h1>PFUH HEXERACT</h1>
+    <p>HALL OF INFINITE MIRRORS — TIME CRYSTAL DRIVE ACTIVE</p>
+  </div>
+
+  <div id="info">
+    <div>A: STABILITY/SCALE</div>
+    <div>B: PHI-TENSION</div>
+    <div>C: PHI-WALL DEPTH</div>
+    <div style="margin-top:8px; color: var(--gold); opacity:0.6">DRAG TO ROTATE</div>
+    <div style="color: var(--gold); opacity:0.6">SCROLL TO ZOOM</div>
+  </div>
+
+  <div id="phase-display" id="phase-display"></div>
+
+  <div id="controls">
+    <button class="ctrl-btn" onclick="toggleMirrors()">MIRRORS<br>ON/OFF</button>
+    <button class="ctrl-btn" onclick="toggleLattice()">LATTICE<br>ON/OFF</button>
+    <button class="ctrl-btn" onclick="toggleBranch()">BRANCH<br>ANIM</button>
+    <button class="ctrl-btn" onclick="resetView()">RESET</button>
+  </div>
+
+  <div id="ladder">
+    <div class="node n0 active" onclick="setGate('0000')">
+      <div class="node-dot" style="background:#6633CC"></div>
+      <div class="node-label">0000</div>
+    </div>
+    <div style="color:#333; font-size:16px">→</div>
+    <div class="node n1" onclick="setGate('1111')">
+      <div class="node-dot" style="background:#3366FF"></div>
+      <div class="node-label">1111</div>
+    </div>
+    <div style="color:#333; font-size:16px">→</div>
+    <div class="node n3" onclick="setGate('3333')">
+      <div class="node-dot" style="background:#00AAFF"></div>
+      <div class="node-label">3333</div>
+    </div>
+    <div style="color:#333; font-size:16px">→</div>
+    <div class="node n5" onclick="setGate('5555')">
+      <div class="node-dot" style="background:#00FFD4"></div>
+      <div class="node-label">5555</div>
+    </div>
+    <div style="color:#333; font-size:16px">→</div>
+    <div class="node n7" onclick="setGate('7777')">
+      <div class="node-dot" style="background:#88FF44"></div>
+      <div class="node-label">7777</div>
+    </div>
+    <div style="color:#333; font-size:16px">→</div>
+    <div class="node n9" onclick="setGate('9999')">
+      <div class="node-dot" style="background:#FFD700"></div>
+      <div class="node-label">9999</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// Phase mapping
+const TAU = Math.PI * 2;
+const phaseMap = { 0: 0, 1: TAU/4, 3: TAU/3, 5: TAU/2.4, 7: TAU/2, 9: TAU };
+const ladder = {
+  '0000': [0,0,0,0], '1111': [1,1,1,1], '3333': [3,3,3,3],
+  '5555': [5,5,5,5], '7777': [7,7,7,7], '9999': [9,9,9,9]
+};
+const gateColors = {
+  '0000': '#6633CC', '1111': '#3366FF', '3333': '#00AAFF',
+  '5555': '#00FFD4', '7777': '#88FF44', '9999': '#FFD700'
+};
+
+// State
+let W, H, cx, cy;
+let rotX = 0.3, rotY = 0.5, rotZ = 0;
+let zoom = 1;
+let time = 0;
+let currentGate = '0000';
+let showMirrors = true;
+let showLattice = true;
+let branchAnim = true;
+let mouseDown = false;
+let lastMouse = {x:0, y:0};
+let mirrorDepth = 18;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  cx = W/2; cy = H/2;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// 4D → 3D projection (rotating in 4D)
+function project4D(x4, y4, z4, w4, t) {
+  // Rotate in 4D (xw and yw planes)
+  const angle = t * 0.3;
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  const x3 = x4 * cos - w4 * sin;
+  const y3 = y4 * cos - w4 * sin * 0.7;
+  const z3 = z4;
+  return [x3, y3, z3];
+}
+
+// 3D → 2D projection with rotation
+function project3D(x, y, z) {
+  // Apply rotations
+  let x1 = x * Math.cos(rotY) - z * Math.sin(rotY);
+  let z1 = x * Math.sin(rotY) + z * Math.cos(rotY);
+  let y1 = y * Math.cos(rotX) - z1 * Math.sin(rotX);
+  let z2 = y * Math.sin(rotX) + z1 * Math.cos(rotX);
+  // Perspective
+  const fov = 4;
+  const scale = (fov / (fov + z2)) * 300 * zoom;
+  return [cx + x1 * scale, cy + y1 * scale, scale];
+}
+
+// Get phase coords for a gate
+function getPhaseCoords(gate) {
+  const digits = ladder[gate];
+  return digits.map(d => phaseMap[d]);
+}
+
+// Draw a hexeract (6D hypercube projected to 2D)
+function drawHexeract(cx2, cy2, size, color, alpha, t) {
+  // 6D hypercube has 64 vertices: all combinations of ±1 in 6D
+  // We'll use first 4 dims for spatial, dims 5-6 for time crystal phase
+  const verts6D = [];
+  for (let i = 0; i < 64; i++) {
+    const bits = [];
+    for (let b = 0; b < 6; b++) bits.push(((i >> b) & 1) * 2 - 1);
+    verts6D.push(bits);
+  }
+
+  // Project 6D → 3D using rotation
+  const projected = verts6D.map(v => {
+    // Use phase rotation for dims 5,6
+    const phase5 = t * 0.5;
+    const phase6 = t * 0.3;
+    const x = v[0] + v[4] * Math.cos(phase5) * 0.3;
+    const y = v[1] + v[4] * Math.sin(phase5) * 0.3;
+    const z = v[2] + v[5] * Math.cos(phase6) * 0.3;
+    return project3D(
+      (x * size + cx2 - cx) / 300,
+      (y * size + cy2 - cy) / 300,
+      z * 0.5
+    );
+  });
+
+  // Draw edges - connect vertices that differ by exactly one bit
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = alpha * 0.4;
+  ctx.lineWidth = 0.5;
+
+  for (let i = 0; i < 64; i++) {
+    for (let j = i+1; j < 64; j++) {
+      let diff = 0;
+      for (let b = 0; b < 6; b++) if (verts6D[i][b] !== verts6D[j][b]) diff++;
+      if (diff === 1) {
+        const [ax, ay] = projected[i];
+        const [bx, by] = projected[j];
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(bx, by);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Draw vertices
+  ctx.globalAlpha = alpha * 0.8;
+  projected.forEach(([px, py, ps]) => {
+    const r = Math.max(1, ps * 0.015);
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, TAU);
+    ctx.fillStyle = color;
+    ctx.fill();
+  });
+}
+
+// Draw the hall of mirrors - infinite corridor
+function drawMirrorHall(t) {
+  if (!showMirrors) return;
+
+  const phases = getPhaseCoords(currentGate);
+  const baseColor = gateColors[currentGate];
+
+  // Number of mirror reflections
+  const numMirrors = mirrorDepth;
+
+  for (let i = numMirrors; i >= 0; i--) {
+    const depth = i / numMirrors;
+    const perspective = 1 - depth * 0.95;
+    const hallW = W * perspective * 0.8;
+    const hallH = H * perspective * 0.7;
+    const x = cx - hallW/2;
+    const y = cy - hallH/2;
+
+    // Alternating mirror reflection (flip every other one)
+    const flip = i % 2 === 0 ? 1 : -1;
+    const phaseShift = phases[0] * depth + t * 0.1;
+
+    // Color shift by phase
+    const hue = (i / numMirrors) * 280;
+    const bright = 20 + depth * 60;
+    const alpha = (1 - depth * 0.85) * 0.6;
+
+    // Draw mirror frame
+    ctx.strokeStyle = `hsla(${hue + 40}, 90%, ${bright + 20}%, ${alpha})`;
+    ctx.lineWidth = 1 - depth * 0.8;
+    ctx.globalAlpha = alpha;
+    ctx.strokeRect(x, y, hallW, hallH);
+
+    // Draw corner accents (Metatron geometry)
+    const cornerSize = hallW * 0.05;
+    ctx.globalAlpha = alpha * 1.5;
+    [[x,y],[x+hallW,y],[x,y+hallH],[x+hallW,y+hallH]].forEach(([cx2,cy2]) => {
+      ctx.beginPath();
+      ctx.arc(cx2, cy2, cornerSize * (1 + Math.sin(phaseShift) * 0.3), 0, TAU);
+      ctx.stroke();
+    });
+
+    // Draw phi-spiral in each mirror
+    if (i % 3 === 0) {
+      ctx.globalAlpha = alpha * 0.3;
+      ctx.strokeStyle = `hsla(${hue + 60}, 100%, 70%, 1)`;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      const spiralSteps = 60;
+      for (let s = 0; s <= spiralSteps; s++) {
+        const angle = (s / spiralSteps) * TAU * 3 * flip + phaseShift;
+        const r = (s / spiralSteps) * Math.min(hallW, hallH) * 0.4;
+        const sx = cx + Math.cos(angle) * r;
+        const sy = cy + Math.sin(angle) * r;
+        s === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+    }
+  }
+
+  ctx.globalAlpha = 1;
+}
+
+// Draw branching Y-tree
+function drawBranches(t) {
+  const phases = getPhaseCoords(currentGate);
+  const gateIndex = Object.keys(ladder).indexOf(currentGate);
+  const numBranches = branchAnim ? Math.floor((gateIndex + 1) * 8 * (0.5 + 0.5 * Math.sin(t * 0.3 + 1))) + 4 : (gateIndex + 1) * 8;
+
+  const color = gateColors[currentGate];
+
+  for (let i = 0; i < numBranches; i++) {
+    const angle = (i / numBranches) * TAU + t * 0.05 + phases[0];
+    const len = 80 + gateIndex * 20;
+    const depth = 4;
+
+    drawBranch(cx, cy, angle, len, depth, color, t, i);
+  }
+}
+
+function drawBranch(x, y, angle, len, depth, color, t, seed) {
+  if (depth <= 0 || len < 3) return;
+
+  const ex = x + Math.cos(angle) * len;
+  const ey = y + Math.sin(angle) * len;
+
+  ctx.globalAlpha = (depth / 5) * 0.4;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = depth * 0.5;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(ex, ey);
+  ctx.stroke();
+
+  // Branch at 90 degrees (the helix-on-helix lattice!)
+  const branchAngle = Math.PI / 2;
+  drawBranch(ex, ey, angle + branchAngle, len * 0.6, depth - 1, color, t, seed);
+  drawBranch(ex, ey, angle - branchAngle, len * 0.6, depth - 1, color, t, seed + 1);
+}
+
+// Draw lattice connections
+function drawLattice(t) {
+  if (!showLattice) return;
+
+  const phases = getPhaseCoords(currentGate);
+  const numNodes = 10;
+
+  ctx.globalAlpha = 0.15;
+  ctx.strokeStyle = gateColors[currentGate];
+  ctx.lineWidth = 0.5;
+
+  // Create phi-spaced nodes
+  const phi = (1 + Math.sqrt(5)) / 2;
+  const nodes = [];
+  for (let i = 0; i < numNodes; i++) {
+    const angle = i * phi * TAU + t * 0.02;
+    const r = 80 + i * 25;
+    nodes.push([cx + Math.cos(angle) * r, cy + Math.sin(angle) * r]);
+  }
+
+  // Connect nodes - lattice connections
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i+1; j < nodes.length; j++) {
+      const dx = nodes[i][0] - nodes[j][0];
+      const dy = nodes[i][1] - nodes[j][1];
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 200) {
+        ctx.globalAlpha = (1 - dist/200) * 0.2;
+        ctx.beginPath();
+        ctx.moveTo(nodes[i][0], nodes[i][1]);
+        ctx.lineTo(nodes[j][0], nodes[j][1]);
+        ctx.stroke();
+      }
+    }
+  }
+
+  ctx.globalAlpha = 1;
+}
+
+// Draw central hexeract
+function drawCentralHexeract(t) {
+  const size = 80 + zoom * 20;
+  const color = gateColors[currentGate];
+  drawHexeract(cx, cy, size, color, 0.8, t);
+}
+
+// Draw Metatron's cube overlay
+function drawMetatron(t) {
+  const phases = getPhaseCoords(currentGate);
+  const r = 120 * zoom;
+  const color = gateColors[currentGate];
+
+  // 6 outer circles + 1 center = 7 circles (Metatron)
+  const centers = [[0,0]];
+  for (let i = 0; i < 6; i++) {
+    const angle = i * TAU/6 + phases[0] + t * 0.01;
+    centers.push([Math.cos(angle) * r, Math.sin(angle) * r]);
+  }
+
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 0.8;
+
+  centers.forEach(([ox, oy]) => {
+    ctx.beginPath();
+    ctx.arc(cx + ox, cy + oy, r, 0, TAU);
+    ctx.stroke();
+  });
+
+  // Connect all centers (Metatron's lines)
+  ctx.globalAlpha = 0.08;
+  for (let i = 0; i < centers.length; i++) {
+    for (let j = i+1; j < centers.length; j++) {
+      ctx.beginPath();
+      ctx.moveTo(cx + centers[i][0], cy + centers[i][1]);
+      ctx.lineTo(cx + centers[j][0], cy + centers[j][1]);
+      ctx.stroke();
+    }
+  }
+
+  ctx.globalAlpha = 1;
+}
+
+// Draw phase readout
+function updatePhaseDisplay() {
+  const phases = getPhaseCoords(currentGate);
+  const pd = document.getElementById('phase-display');
+  if (pd) {
+    pd.innerHTML = `
+      GATE: ${currentGate}<br>
+      φ[0]: ${phases[0].toFixed(4)}<br>
+      φ[1]: ${phases[1].toFixed(4)}<br>
+      φ[2]: ${phases[2].toFixed(4)}<br>
+      φ[3]: ${phases[3].toFixed(4)}<br>
+      |φ|: ${Math.sqrt(phases.reduce((s,p)=>s+p*p,0)).toFixed(4)}
+    `;
+  }
+}
+
+// Main render loop
+function render() {
+  ctx.fillStyle = 'rgba(0,0,5,0.15)';
+  ctx.fillRect(0, 0, W, H);
+
+  time += 0.016;
+
+  drawMetatron(time);
+  drawMirrorHall(time);
+  drawLattice(time);
+  drawBranches(time);
+  drawCentralHexeract(time);
+
+  // Central glow
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, 80);
+  grd.addColorStop(0, gateColors[currentGate] + '33');
+  grd.addColorStop(1, 'transparent');
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle = grd;
+  ctx.fillRect(cx-80, cy-80, 160, 160);
+  ctx.globalAlpha = 1;
+
+  updatePhaseDisplay();
+  requestAnimationFrame(render);
+}
+
+// Controls
+function toggleMirrors() { showMirrors = !showMirrors; }
+function toggleLattice() { showLattice = !showLattice; }
+function toggleBranch() { branchAnim = !branchAnim; }
+function resetView() { rotX = 0.3; rotY = 0.5; zoom = 1; }
+
+function setGate(gate) {
+  currentGate = gate;
+  document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+
+// Mouse controls
+canvas.addEventListener('mousedown', e => { mouseDown = true; lastMouse = {x:e.clientX, y:e.clientY}; });
+canvas.addEventListener('mouseup', () => mouseDown = false);
+canvas.addEventListener('mousemove', e => {
+  if (!mouseDown) return;
+  rotY += (e.clientX - lastMouse.x) * 0.005;
+  rotX += (e.clientY - lastMouse.y) * 0.005;
+  lastMouse = {x:e.clientX, y:e.clientY};
+});
+canvas.addEventListener('wheel', e => {
+  zoom = Math.max(0.3, Math.min(3, zoom - e.deltaY * 0.001));
+  e.preventDefault();
+}, {passive: false});
+
+// Touch controls
+canvas.addEventListener('touchstart', e => {
+  mouseDown = true;
+  lastMouse = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+});
+canvas.addEventListener('touchend', () => mouseDown = false);
+canvas.addEventListener('touchmove', e => {
+  if (!mouseDown) return;
+  rotY += (e.touches[0].clientX - lastMouse.x) * 0.005;
+  rotX += (e.touches[0].clientY - lastMouse.y) * 0.005;
+  lastMouse = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+  e.preventDefault();
+}, {passive: false});
+
+render();
+</script>
+</body>
+</html>
